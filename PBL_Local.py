@@ -1,41 +1,22 @@
 import os
 from PrimerBlast_Tools import Primer_Blast_Fuction as pb
 
-gene_name = 'AHK2'
-out_address = '/Users/******/Desktop/******/'         # Needs a '/' in the end
-db_address = '/Users/******/Desktop/ncbi-blast-2.10.1+/bin/******.fa'
-print('Gene information recieved.')
-evalue = 1
-identity = 18
+gene_name = input("请输入基因名称: ")
+raw_seq = input("请输入DNA序列（可换行）: ")
+print("输入序列长度为 ",len(raw_seq)," bp")
+min_size = int(input("请输入产物长度min :"))
+max_size = int(input("请输入产物长度max :"))
+num_return = int(input("请输入要返回的引物对数量: "))
 
-raw_seq='''ggggtcttcccccaagaattggtagatgtggttttggtgccggccgacatgtctatagct
-tgtgagctctcgaatcccaatttaaagaagacaaaagcagaaaaacggataccaaccaag
-attctgcttatccgggttttatgtggcttagttgttctctggctctgcttaagcttaagc
-ttaggcttcttatgtatatgcaagaagaaagaggctgctgctgctgctgatgactcttct
-tcttctgctaaagggatgttgttcaggaatcagagcagaagtgagattgatgctatgctt
-tctctcttctttgattcaaatcaggtttcccactacttctttcttctttttattattgtt
-tgacaatttaatttacttaaagcttttgaataattggagaacaggtaacatcttttgaat
-gtcgcaaggagaatggtggtattacatgttccttgtcaacacgttccgagaaaggagacg
-aggaggaggaggaggctaagagacatgttgttgcagaggttatgtcatcatctgagaatg
-aagaagaaggaggtgtgctgcatcaggttgtgttgttttatgtaatgaacaaatggcatt
-ggtggttggtcctttgtgtactactagtgggcggcggccgtgtgatatttgtaagaaaag
-aagtttcttctttagtacaagacaagcagcagcagcagcagcaatgcaaaacagctggga
-agtggaggaagaacatgcttctactcggcatcatcgcgggagtttctttgtctgttttat
-ggttttgggataccaacgagaagatcttgttccaaaggaaagagacgttaaccaacatgt
-gtgaggaacgagctcgggtgttgcaggaccagttcaatgttagcatgaaccatgtccacg
-ccttgtccatcctcgtctctacctttcaccatggcaaaaccccttctgccattgatcagg
-taaactaagagtccgaatggtaacatgtggtgcggttctaatagtaacaaaatcgtatag
-atacatgtgtaaatctagagattttttaatgttaattgcggtgcgattctaatagtaaaa
-aaaagtatagatacatgtgtatatctagagatttttgttattgttaactacgatggtgtt
-ttaatagtaacaaaaacgtatagatacatatgtatatttagagatttttgttaatgttaa
-ttgcggcgcggttctaatagtaaccaaaaagtatatatacatgtgtatatctagagattt
-ttttaactgcggtgctgttccaatagtaacaaaaacgtatagatacatgtgtaaatctag
-agatttttgttaatgttaattgtggtgcagttctaatagtaacaaaaacgtatagataca
-tgtgtatatctaaagatttttgttaatgttaattgtggtgcggttccaatagtaacaaaa
-acgtatagatacatgtgtaaatctagagatttttgttaatgttaattgtggtgcggttct
-atagtaacaaaaacgtatagatacatgtgtatatctagagatttttgttaatgctaattg
-tgctgcggtgcggttagaaataaaattccattcttaagatttttaactgttgattttttt
-tttttcag'''
+out_address = '/home/wr/github_software/Primer_Blast_Multiple/Output/'         # Needs a '/' in the end
+# db_address = '/home/wr/document/genome/NCBI-zm-5/zm5'
+# db_address = '/home/wr/document/genome/NCBI-zm-5/zm5rna'
+db_address = '/home/wr/document/genome/MaizeGDB-W22-v2/w22dna'
+print('Gene information recieved.')
+evalue = 10
+identity = 15
+
+
 
 raw_seq=raw_seq.upper()
 
@@ -76,8 +57,8 @@ global_args = {
     'PRIMER_MAX_SELF_END': 8,
     'PRIMER_PAIR_MAX_COMPL_ANY': 12,
     'PRIMER_PAIR_MAX_COMPL_END': 8,
-    'PRIMER_PRODUCT_SIZE_RANGE': [[100, 500], [500, 1000]],
-    'PRIMER_NUM_RETURN': 20
+    'PRIMER_PRODUCT_SIZE_RANGE': [min_size, max_size],
+    'PRIMER_NUM_RETURN': num_return
 }
 print('Parameters saved.')
 print('Start designing primers for ', gene_name, '.')
