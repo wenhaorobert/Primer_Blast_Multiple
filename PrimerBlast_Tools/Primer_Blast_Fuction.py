@@ -107,22 +107,70 @@ def blastn(query_address: str, db_address: str, out_address1: str = '', evalue=0
     stout, stderr = blastn_cline()
     result_handle = open(out_address1)
     blast_record = NCBIXML.read(result_handle)
+    result_handle.close() # 关闭文件流
     e_value_thresh = evalue  # set E_value or other parameter and judge if exist
     identities = identity  # set identity for alignments,for primer design:length of primer-2 is recommended
     count = 0  # count number of blast hits
-    name_list = []
+    # 修改列表，用来存储所有符合条件的结合位点详细信息
+    hit_locations = [] 
+    
     for alignment in blast_record.alignments:
+        chrom_name = alignment.title.split()[-1] if ' ' in alignment.title else alignment.title
+        
         for hsp in alignment.hsps:
             if hsp.expect <= e_value_thresh and hsp.identities >= identities:
-                count += 1
-                name_list.append(alignment.title)
-                print('****Alignment****')
-                print('sequence:', alignment.title)
-                print('length:', alignment.length)
-                print('identity:', hsp.identities)
-                print('e value:', hsp.expect)
-                print(hsp.query[0:75] + '...')
-                print(hsp.match[0:75] + '...')
-                print(hsp.sbjct[0:75] + '...')
-    print(count, ' similar sequence found.')
-    return count, name_list
+                
+                # 准确记录比对在基因组上的绝对起点和终点（不管正负链，确保 start < end）
+                if hsp.sbjct_start <= hsp.sbjct_end:
+                    strand = '+'
+                    start_pos = hsp.sbjct_start
+                    end_pos = hsp.sbjct_end
+                else:
+                    strand = '-'
+                    start_pos = hsp.sbjct_end
+                    end_pos = hsp.sbjct_start
+                
+                hit_locations.append({
+                    'chr': chrom_name,
+                    'start': start_pos,
+                    'end': end_pos,       
+                    'strand': strand
+                })
+                
+    return hit_locations
+
+
+def check_pcr_products(f_hits, r_hits, max_product_size=5000):
+    """
+    根据F和R在基因组上的所有结合位点，交叉计算能扩增出多少个潜在条带
+    """
+    products = []
+    for f in f_hits:
+        for r in r_hits:
+            # 条件 1：必须在同一条染色体上
+            if f['chr'] != r['chr']:
+                continue
+                
+            p_size = 0
+            
+            # 条件 2：方向必须面对面，且计算包含引物全长的真实 PCR 产物大小
+            # 情况 A：F 在正链(+)，R 在负链(-) -> F 在左边，R 在右边
+            if f['strand'] == '+' and r['strand'] == '-':
+                if f['start'] < r['end']:
+                    # 真实长度 = 右侧引物的终止端 - 左侧引物的起始端 + 1
+                    p_size = r['end'] - f['start'] + 1
+                    
+            # 情况 B：F 在负链(-)，R 在正链(+) -> R 在左边，F 在右边
+            elif f['strand'] == '-' and r['strand'] == '+':
+                if r['start'] < f['end']:
+                    # 真实长度 = 右侧引物的终止端 - 左侧引物的起始端 + 1
+                    p_size = f['end'] - r['start'] + 1
+            
+            # 条件 3：产物长度在常规PCR可扩增范围内
+            if 0 < p_size <= max_product_size:
+                products.append({
+                    'chr': f['chr'],
+                    'size': p_size
+                })
+                
+    return products

@@ -9,9 +9,9 @@ max_size = int(input("请输入产物长度max :"))
 num_return = int(input("请输入要返回的引物对数量: "))
 
 out_address = '/home/wr/github_software/Primer_Blast_Multiple/Output/'         # Needs a '/' in the end
-# db_address = '/home/wr/document/genome/NCBI-zm-5/zm5'
+db_address = '/home/wr/document/genome/NCBI-zm-5/zm5'
 # db_address = '/home/wr/document/genome/NCBI-zm-5/zm5rna'
-db_address = '/home/wr/document/genome/MaizeGDB-W22-v2/w22dna'
+# db_address = '/home/wr/document/genome/MaizeGDB-W22-v2/w22dna'
 print('Gene information recieved.')
 evalue = 10
 identity = 15
@@ -84,20 +84,44 @@ for pair in primer_list:
     tmp_r.write("%s" % reverse)
     tmp_r.close()
     print('_Left Primer:')
-    f, f_n = pb.blastn(out_address + "tmp_f.fasta", db_address=db_address,
+    f_hits = pb.blastn(out_address + "tmp_f.fasta", db_address=db_address,
                        out_address1=out_address + gene_name + '_PBL.xml',
                        evalue=evalue, identity=len(forward)-2, task='blastn-short', dust='no')
     print('_Right Primer:')
-    r, r_n = pb.blastn(out_address + "tmp_r.fasta", db_address=db_address,
+    r_hits = pb.blastn(out_address + "tmp_r.fasta", db_address=db_address,
                        out_address1=out_address + gene_name + '_PBL.xml',
                        evalue=evalue, identity=len(reverse)-2, task='blastn-short', dust='no')
-    list_f.append(f)
-    list_r.append(r)
+    #新的判断PCR产物函数
+    f_hit_count = len(f_hits)
+    r_hit_count = len(r_hits)
+    predicted_bands = pb.check_pcr_products(f_hits, r_hits)
+    list_f.append(len(f_hits))
+    list_r.append(len(r_hits))
+    is_specific = False
+    # 1. 严格检查是否有潜在的非特异性产物（绝对不能有多个条带）
+    if len(predicted_bands) > 1:
+        print(f"-> ❌ 淘汰：预测会扩增出 {len(predicted_bands)} 个条带！存在非特异性扩增风险。")
+        print(f"   具体产物长度: {[b['size'] for b in predicted_bands]} bp")
 
-    if r == 1 and f == 1:
-        list_result.append(count)
-        # print('Primer Pair '+str(count)+': Forward/Reverse primer found '+str(f)+'/'+str(r)+' products on intended
-        # targets,respectively.')
+    # 2. 如果产物只有1个，评估引物的背景结合风险
+    elif len(predicted_bands) == 1:
+        # 允许轻微的非特异性结合，但如果结合点太多（比如超过3个），说明引物本身在基因组背景太脏
+        if f_hit_count > 3 or r_hit_count > 3:
+            print(f"-> ⚠️ 淘汰：虽然只有1个主要产物，但引物背景结合位点过多 (F:{f_hit_count}, R:{r_hit_count})，易导致竞争性抑制。")
+        else:
+            # 完美的特异性，或者只有1-2个无法延伸的背景位点
+            product_size = predicted_bands[0]['size']
+            print(f"-> ✅ 通过！预测产物数量: 1 ({product_size} bp)，且引物基因组背景干净 (F:{f_hit_count}, R:{r_hit_count})。")
+            is_specific = True
+            
+    # 3. 没有预测出任何产物
+    else:
+        print("-> ❌ 淘汰：无法预测出任何有效长度的PCR产物。")
+
+    # 修正点2：如果通过了特异性验证，将当前引物编号记录到你的最终列表中
+    if is_specific:
+        # 请根据你原本的代码变量名确认是 list_result 还是其他名字
+        list_result.append(count) 
     count += 1
 
 primer_df.loc['LEFT_PRIMER_PRODUCTS'] = list_f
